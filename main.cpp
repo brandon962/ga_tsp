@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 
     if (argc > 3)
     {
-        GaTsp gatsp = GaTsp(seed, atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5], atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), atoi(argv[9]), atoi(argv[10]));
+        GaTsp gatsp = GaTsp(seed, atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5], atof(argv[6]), atof(argv[7]), atof(argv[8]), atoi(argv[9]), atoi(argv[10]));
     }
     else
     {

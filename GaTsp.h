@@ -2,6 +2,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "myVector.h"
 #include <climits>
+#include <ctime>
 #include <iostream>
 #include <random>
 #include <string>
@@ -10,6 +11,7 @@ class GaTsp
 {
 private:
     /* data */
+    time_t start, end;
     int num_runs;
     int num_iters;
     int num_cities;
@@ -60,10 +62,12 @@ public:
     void crossoverOX();
     void select();
     void wirteFile();
+    void printMessage();
 };
 
 GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, double _mutation_decrease, int _cossover_choice, int _players)
 {
+    start = time(NULL);
     num_runs = _num_runs;
     num_iters = _num_iters;
     num_chromos = _num_chroms;
@@ -80,9 +84,12 @@ GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int 
     rand_01 = uniform_real_distribution<double>(0, 1);
     rand_allchromos = uniform_int_distribution<int>(0, (num_chromos * 2) - 1);
 
+    printMessage();
     assignVector();
     readDistance(_input_filename);
     run();
+    end = time(NULL);
+    cout << "cost time : " << end - start << endl;
 }
 
 GaTsp::~GaTsp()
@@ -544,4 +551,26 @@ void GaTsp::wirteFile()
         fprintf(fp, "%f\n", run_avg[iters]);
     }
     fclose(fp);
+}
+
+void GaTsp::printMessage()
+{
+    cout << "runs          \t" << num_runs << endl
+         << "iters         \t" << num_iters << endl
+         << "pop size      \t" << num_chromos << endl
+         << "cities        \t" << num_cities << endl
+         << "crossover rate\t" << crossover_rate << endl
+         << "mutation rate \t" << mutation_rate << endl;
+    switch (crossover_choice)
+    {
+    case 0:
+        cout << "crossover type\tPMX" << endl;
+        break;
+    case 1:
+        cout << "crossover type\tOX" << endl;
+        break;
+    case 2:
+        cout << "crossover type\tCX" << endl;
+        break;
+    }
 }
