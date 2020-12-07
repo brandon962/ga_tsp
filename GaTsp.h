@@ -17,7 +17,11 @@ private:
 
     double crossover_rate;
     double mutation_rate;
+    double mutation_decrease;
     int crossover_choice;
+    int num_players;
+
+    d1d run_result;
 
     i2d place_table;
     d2d distance_table;
@@ -27,14 +31,19 @@ private:
     // CX
     i1d cx_mark;
 
+    // select
+    i2d select_chromos;
+    int select_fit;
+
     //  random
     std::default_random_engine gen;
     std::uniform_int_distribution<int> rand_max;
     std::uniform_int_distribution<int> rand_cities;
+    std::uniform_int_distribution<int> rand_allchromos;
     std::uniform_real_distribution<double> rand_01;
 
 public:
-    GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, int _cossover_choice);
+    GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, double _mutation_decrease, int _cossover_choice, int _players);
     ~GaTsp();
     void assignVector();
     void initChromo();
@@ -45,9 +54,10 @@ public:
     int find(i1d, int);
     void crossoverPMX();
     void crossoverCX();
+    void select();
 };
 
-GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, int _cossover_choice)
+GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, double _mutation_decrease, int _cossover_choice, int _players)
 {
     num_runs = _num_runs;
     num_iters = _num_iters;
@@ -55,12 +65,15 @@ GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int 
     num_cities = _num_cities;
     crossover_rate = _crossover_rate;
     mutation_rate = _mutation_rate;
+    mutation_decrease = _mutation_decrease;
     crossover_choice = _cossover_choice;
+    num_players = _players;
 
     gen = default_random_engine(seed);
     rand_max = uniform_int_distribution<int>(0, INT_MAX);
-    rand_cities = uniform_int_distribution<int>(0, num_cities);
+    rand_cities = uniform_int_distribution<int>(0, num_cities - 1);
     rand_01 = uniform_real_distribution<double>(0, 1);
+    rand_allchromos = uniform_int_distribution<int>(0, (num_chromos * 2) - 1);
 
     assignVector();
     readDistance(_input_filename);
@@ -83,21 +96,23 @@ GaTsp::~GaTsp()
 
 void GaTsp::assignVector()
 {
-    chromo_set.assign(num_chromos, i1d(num_cities, 0));
-    chromo_fit_set.assign(num_chromos, 0);
+    chromo_set.assign(num_chromos * 2, i1d(num_cities, 0));
+    chromo_fit_set.assign(num_chromos * 2, 0);
     distance_table.assign(num_cities, d1d(num_cities, 0));
     place_table.assign(num_cities, i1d(2, 0));
+    run_result.assign(num_runs, 0.0);
     if (crossover_choice == 2)
     {
         cx_mark.assign(num_cities, 0);
     }
+    select_chromos.assign(num_chromos, i1d(num_cities, 0));
 }
 
 void GaTsp::initChromo()
 {
     int itemp;
     vector<int>::iterator cities_iterator;
-    for (int chromos = 0; chromos < num_chromos; chromos++)
+    for (int chromos = 0; chromos < num_chromos * 2; chromos++)
     {
         i1d temp_cities;
         temp_cities.assign(num_cities, 0);
@@ -151,7 +166,7 @@ void GaTsp::readDistance(string _input_filename)
 void GaTsp::countChromoFit()
 {
     double distance;
-    for (int chromos = 0; chromos < num_chromos; chromos++)
+    for (int chromos = 0; chromos < num_chromos * 2; chromos++)
     {
         distance = 0.0;
         for (int cities = 0; cities < num_cities - 1; cities++)
@@ -168,21 +183,33 @@ void GaTsp::run()
     {
         initChromo();
         countChromoFit();
-        printAllChromo();
+        // printAllChromo();
         for (int iters = 0; iters < num_iters; iters++)
         {
             // crossoverPMX();
             // printAllChromo();
             crossoverCX();
+            countChromoFit();
+            select();
+            countChromoFit();
             // printAllChromo();
-            cout << "-----------------------------------------------"
-                 << endl
-                 << "-----------------------------------------------"
-                 << endl;
+            // cout << "-----------------------------------------------"
+            //      << endl
+            //      << "-----------------------------------------------"
+            //      << endl;
         }
+        // printAllChromo();
+        run_result[runs] = chromo_fit_set[0];
     }
+    double run_avg = 0.0;
+    for (int runs = 0; runs < num_runs; runs++)
+    {
+        cout << run_result[runs] << endl;
+        run_avg += run_result[runs];
+    }
+    run_avg /= num_runs;
+    cout << "avg : " << run_avg << endl;
 }
-
 int GaTsp::find(i1d chromo, int target)
 {
     for (int cities = 0; cities < num_cities; cities++)
@@ -219,7 +246,7 @@ void GaTsp::crossoverCX()
             cx_mark[cities] = 0;
         point_start = rand_cities(gen);
         cx_mark[point_start] = 1;
-        cout << point_start << endl;
+        // cout << point_start << endl;
 
         point_next = find(chromo_set[chromos], chromo_set[chromos + 1][point_start]);
         while (point_next != point_start)
@@ -232,9 +259,50 @@ void GaTsp::crossoverCX()
         {
             if (cx_mark[cities])
             {
+                chromo_set[chromos + num_chromos][cities] = chromo_set[chromos][cities];
+                chromo_set[chromos + num_chromos + 1][cities] = chromo_set[chromos + 1][cities];
             }
             else
-                swap(chromo_set[chromos][cities], chromo_set[chromos + 1][cities]);
+            {
+                chromo_set[chromos + num_chromos + 1][cities] = chromo_set[chromos][cities];
+                chromo_set[chromos + num_chromos][cities] = chromo_set[chromos + 1][cities];
+            }
+        }
+        double m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos][rand_cities(gen)], chromo_set[chromos + num_chromos][rand_cities(gen)]);
+        }
+        m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos + 1][rand_cities(gen)], chromo_set[chromos + num_chromos + 1][rand_cities(gen)]);
         }
     }
+}
+
+void GaTsp::select()
+{
+    int selected;
+    int itemp;
+    for (int chromos = 0; chromos < num_chromos; chromos++)
+    {
+        selected = rand_allchromos(gen);
+        select_fit = chromo_fit_set[selected];
+        for (int players = 1; players < num_players; players++)
+        {
+            itemp = rand_allchromos(gen);
+            if (select_fit > chromo_fit_set[itemp])
+            {
+                select_fit = chromo_fit_set[selected];
+                selected = itemp;
+            }
+        }
+        select_chromos[chromos] = chromo_set[selected];
+    }
+
+    for (int chromos = 0; chromos < num_chromos; chromos++)
+        chromo_set[chromos] = select_chromos[chromos];
 }
