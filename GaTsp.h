@@ -47,13 +47,16 @@ public:
     ~GaTsp();
     void assignVector();
     void initChromo();
-    void printAllChromo();
+    void printAllChromos();
     void readDistance(string _input_filename);
     void countChromoFit();
     void run();
+    double findBest();
     int find(i1d, int);
+    int find(i1d, int, int, int);
     void crossoverPMX();
     void crossoverCX();
+    void crossoverOX();
     void select();
 };
 
@@ -132,7 +135,7 @@ void GaTsp::initChromo()
     }
 }
 
-void GaTsp::printAllChromo()
+void GaTsp::printAllChromos()
 {
     for (int chromos = 0; chromos < num_chromos; chromos++)
     {
@@ -173,6 +176,7 @@ void GaTsp::countChromoFit()
         {
             distance += distance_table[chromo_set[chromos][cities]][chromo_set[chromos][cities + 1]];
         }
+        distance += distance_table[chromo_set[chromos][num_cities - 1]][chromo_set[chromos][0]];
         chromo_fit_set[chromos] = distance;
     }
 }
@@ -181,25 +185,43 @@ void GaTsp::run()
 {
     for (int runs = 0; runs < num_runs; runs++)
     {
+        double best = __DBL_MAX__;
         initChromo();
         countChromoFit();
-        // printAllChromo();
+        // printAllChromos();
         for (int iters = 0; iters < num_iters; iters++)
         {
             // crossoverPMX();
-            // printAllChromo();
-            crossoverCX();
+            // printAllChromos();
+            switch (crossover_choice)
+            {
+            case 0:
+                // printAllChromos();
+                crossoverPMX();
+                // printAllChromos();
+                break;
+            case 1:
+                // printAllChromos();
+                crossoverOX();
+                // printAllChromos();
+                break;
+            case 2:
+                crossoverCX();
+                break;
+            }
             countChromoFit();
             select();
             countChromoFit();
-            // printAllChromo();
+            // printAllChromos();
             // cout << "-----------------------------------------------"
             //      << endl
             //      << "-----------------------------------------------"
             //      << endl;
+            if (best > findBest())
+                best = findBest();
         }
-        // printAllChromo();
-        run_result[runs] = chromo_fit_set[0];
+        // printAllChromos();
+        run_result[runs] = best;
     }
     double run_avg = 0.0;
     for (int runs = 0; runs < num_runs; runs++)
@@ -210,6 +232,7 @@ void GaTsp::run()
     run_avg /= num_runs;
     cout << "avg : " << run_avg << endl;
 }
+
 int GaTsp::find(i1d chromo, int target)
 {
     for (int cities = 0; cities < num_cities; cities++)
@@ -220,17 +243,96 @@ int GaTsp::find(i1d chromo, int target)
     return -1;
 }
 
+int GaTsp::find(i1d chromo, int start, int end, int target)
+{
+    for (int cities = start; cities <= end; cities++)
+    {
+        if (chromo[cities] == target)
+            return cities;
+    }
+    return -1;
+}
+
+double GaTsp::findBest()
+{
+    double best = __DBL_MAX__;
+    for (int chromos = 0; chromos < num_chromos; chromos++)
+    {
+        if (chromo_fit_set[chromos] < best)
+            best = chromo_fit_set[chromos];
+    }
+    return best;
+}
+
 void GaTsp::crossoverPMX()
 {
     for (int chromos = 0; chromos < num_chromos; chromos += 2)
     {
         int point_start = 0, point_end = 0;
+        int itemp;
         while (point_start == point_end)
         {
             point_start = rand_cities(gen);
             point_end = rand_cities(gen);
         }
         point_start > point_end ? swap(point_start, point_end) : swap(point_start, point_start);
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            chromo_set[chromos + num_chromos][cities] = -1;
+            chromo_set[chromos + 1 + num_chromos][cities] = -1;
+        }
+
+        for (int cities = point_start; cities <= point_end; cities++)
+        {
+            chromo_set[chromos + num_chromos][cities] = chromo_set[chromos + 1][cities];
+            chromo_set[chromos + num_chromos + 1][cities] = chromo_set[chromos][cities];
+        }
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            if (cities >= point_start && cities <= point_end)
+                continue;
+            if (find(chromo_set[chromos + 1], point_start, point_end, chromo_set[chromos][cities]) == -1)
+                chromo_set[chromos + num_chromos][cities] = chromo_set[chromos][cities];
+            if (find(chromo_set[chromos], point_start, point_end, chromo_set[chromos + 1][cities]) == -1)
+                chromo_set[chromos + 1 + num_chromos][cities] = chromo_set[chromos + 1][cities];
+        }
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            if (chromo_set[chromos + num_chromos][cities] == -1)
+            {
+                itemp = find(chromo_set[chromos + 1], point_start, point_end, chromo_set[chromos][cities]);
+                while (itemp != -1)
+                {
+                    chromo_set[chromos + num_chromos][cities] = chromo_set[chromos][itemp];
+                    itemp = find(chromo_set[chromos + 1], point_start, point_end, chromo_set[chromos + num_chromos][cities]);
+                }
+            }
+            if (chromo_set[chromos + 1 + num_chromos][cities] == -1)
+            {
+                itemp = find(chromo_set[chromos], point_start, point_end, chromo_set[chromos + 1][cities]);
+                while (itemp != -1)
+                {
+                    chromo_set[chromos + 1 + num_chromos][cities] = chromo_set[chromos + 1][itemp];
+                    itemp = find(chromo_set[chromos], point_start, point_end, chromo_set[chromos + 1 + num_chromos][cities]);
+                }
+            }
+        }
+
+        double m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos][rand_cities(gen)], chromo_set[chromos + num_chromos][rand_cities(gen)]);
+        }
+        m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos + 1][rand_cities(gen)], chromo_set[chromos + num_chromos + 1][rand_cities(gen)]);
+        }
     }
 }
 
@@ -268,6 +370,115 @@ void GaTsp::crossoverCX()
                 chromo_set[chromos + num_chromos][cities] = chromo_set[chromos + 1][cities];
             }
         }
+        double m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos][rand_cities(gen)], chromo_set[chromos + num_chromos][rand_cities(gen)]);
+        }
+        m1 = mutation_rate;
+        while (rand_01(gen) < m1)
+        {
+            m1 *= mutation_decrease;
+            swap(chromo_set[chromos + num_chromos + 1][rand_cities(gen)], chromo_set[chromos + num_chromos + 1][rand_cities(gen)]);
+        }
+    }
+}
+
+void GaTsp::crossoverOX()
+{
+    for (int chromos = 0; chromos < num_chromos; chromos += 2)
+    {
+        int point_start = 0, point_end = 0;
+        int point_next0, point_next1;
+        bool flag = true;
+        while (point_start == point_end)
+        {
+            point_start = rand_cities(gen);
+            point_end = rand_cities(gen);
+        }
+        point_start > point_end ? swap(point_start, point_end) : swap(point_start, point_start);
+
+        // cout << endl
+        //      << point_start << " " << point_end << endl;
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            chromo_set[chromos + num_chromos][cities] = -1;
+            chromo_set[chromos + 1 + num_chromos][cities] = -1;
+        }
+
+        for (int cities = point_start; cities <= point_end; cities++)
+        {
+            chromo_set[chromos + num_chromos][cities] = chromo_set[chromos + 1][cities];
+            chromo_set[chromos + num_chromos + 1][cities] = chromo_set[chromos][cities];
+        }
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            flag = true;
+            for (int i = point_start; i <= point_end; i++)
+                if (chromo_set[chromos][cities] == chromo_set[chromos + 1][i])
+                    flag = false;
+            if (flag)
+            {
+                point_next0 = cities;
+                break;
+            }
+        }
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            flag = true;
+            for (int i = point_start; i <= point_end; i++)
+                if (chromo_set[chromos + 1][cities] == chromo_set[chromos][i])
+                    flag = false;
+            if (flag)
+            {
+                point_next1 = cities;
+                break;
+            }
+        }
+
+        for (int cities = 0; cities < num_cities; cities++)
+        {
+            if (cities >= point_start && cities <= point_end)
+                continue;
+            chromo_set[chromos + num_chromos][cities] = chromo_set[chromos][point_next0];
+            chromo_set[chromos + 1 + num_chromos][cities] = chromo_set[chromos + 1][point_next1];
+            for (int cities = point_next0 + 1; cities < num_cities; cities++)
+            {
+                flag = true;
+                for (int i = point_start; i <= point_end; i++)
+                    if (chromo_set[chromos][cities] == chromo_set[chromos + 1][i])
+                        flag = false;
+                if (flag)
+                {
+                    point_next0 = cities;
+                    break;
+                }
+            }
+            for (int cities = point_next1 + 1; cities < num_cities; cities++)
+            {
+                flag = true;
+                for (int i = point_start; i <= point_end; i++)
+                    if (chromo_set[chromos + 1][cities] == chromo_set[chromos][i])
+                        flag = false;
+                if (flag)
+                {
+                    point_next1 = cities;
+                    break;
+                }
+            }
+        }
+
+        // for (int citits = 0; citits < num_cities; citits++)
+        //     cout << chromo_set[chromos + num_chromos][citits] << " ";
+        // cout << endl;
+
+        // for (int citits = 0; citits < num_cities; citits++)
+        //     cout << chromo_set[chromos + 1 + num_chromos][citits] << " ";
+        // cout << endl;
+
         double m1 = mutation_rate;
         while (rand_01(gen) < m1)
         {
