@@ -6,14 +6,19 @@
 
 using namespace std;
 
-int main()
+int main(int argc, char *argv[])
 {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
-    // GaTsp(unsigned seed,int _num_runs,int _num_iters, int _num_chrom, int _num_cities, string filename)
-    // GaTsp ga = GaTsp(seed, 30, 500, 500, 51, "eil51.txt", 0.8, 0.8, 0.2, 2, 50);
-    // GaTsp ga = GaTsp(seed, 30, 500, 500, 51, "eil51.txt", 0.8, 0.8, 0.2, 1, 50);
-    GaTsp ga = GaTsp(seed, 30, 500, 500, 51, "eil51.txt", 0.8, 0.8, 0.2, 0, 50);
-
+    if (argc > 3)
+    {
+        GaTsp gatsp = GaTsp(seed, atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), argv[5], atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), atoi(argv[9]), atoi(argv[10]));
+    }
+    else
+    {
+        GaTsp gaCX = GaTsp(seed, 30, 200, 1000, 51, "eil51.txt", 0.8, 0.8, 0.2, 2, 100);
+        GaTsp gaOX = GaTsp(seed, 30, 200, 1000, 51, "eil51.txt", 0.8, 0.8, 0.2, 1, 100);
+        GaTsp gaPMX = GaTsp(seed, 30, 200, 1000, 51, "eil51.txt", 0.8, 0.8, 0.2, 0, 100);
+    }
     return 0;
 }

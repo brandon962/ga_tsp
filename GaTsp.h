@@ -21,7 +21,8 @@ private:
     int crossover_choice;
     int num_players;
 
-    d1d run_result;
+    d2d run_result;
+    d1d run_avg;
 
     i2d place_table;
     d2d distance_table;
@@ -43,12 +44,12 @@ private:
     std::uniform_real_distribution<double> rand_01;
 
 public:
-    GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, double _mutation_decrease, int _cossover_choice, int _players);
+    GaTsp(unsigned, int, int, int, int, string, double, double, double, int, int);
     ~GaTsp();
     void assignVector();
     void initChromo();
     void printAllChromos();
-    void readDistance(string _input_filename);
+    void readDistance(string);
     void countChromoFit();
     void run();
     double findBest();
@@ -58,6 +59,7 @@ public:
     void crossoverCX();
     void crossoverOX();
     void select();
+    void wirteFile();
 };
 
 GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int _num_cities, string _input_filename, double _crossover_rate, double _mutation_rate, double _mutation_decrease, int _cossover_choice, int _players)
@@ -81,8 +83,6 @@ GaTsp::GaTsp(unsigned seed, int _num_runs, int _num_iters, int _num_chroms, int 
     assignVector();
     readDistance(_input_filename);
     run();
-
-    cout << "!!!" << endl;
 }
 
 GaTsp::~GaTsp()
@@ -95,6 +95,14 @@ GaTsp::~GaTsp()
     chromo_set.shrink_to_fit();
     chromo_fit_set.clear();
     chromo_fit_set.shrink_to_fit();
+    run_result.clear();
+    run_result.shrink_to_fit();
+    run_avg.clear();
+    run_avg.shrink_to_fit();
+    cx_mark.clear();
+    cx_mark.shrink_to_fit();
+    select_chromos.clear();
+    select_chromos.shrink_to_fit();
 }
 
 void GaTsp::assignVector()
@@ -103,7 +111,8 @@ void GaTsp::assignVector()
     chromo_fit_set.assign(num_chromos * 2, 0);
     distance_table.assign(num_cities, d1d(num_cities, 0));
     place_table.assign(num_cities, i1d(2, 0));
-    run_result.assign(num_runs, 0.0);
+    run_result.assign(num_runs, d1d(num_iters, 0.0));
+    run_avg.assign(num_iters, 0.0);
     if (crossover_choice == 2)
     {
         cx_mark.assign(num_cities, 0);
@@ -188,22 +197,15 @@ void GaTsp::run()
         double best = __DBL_MAX__;
         initChromo();
         countChromoFit();
-        // printAllChromos();
         for (int iters = 0; iters < num_iters; iters++)
         {
-            // crossoverPMX();
-            // printAllChromos();
             switch (crossover_choice)
             {
             case 0:
-                // printAllChromos();
                 crossoverPMX();
-                // printAllChromos();
                 break;
             case 1:
-                // printAllChromos();
                 crossoverOX();
-                // printAllChromos();
                 break;
             case 2:
                 crossoverCX();
@@ -212,25 +214,22 @@ void GaTsp::run()
             countChromoFit();
             select();
             countChromoFit();
-            // printAllChromos();
-            // cout << "-----------------------------------------------"
-            //      << endl
-            //      << "-----------------------------------------------"
-            //      << endl;
             if (best > findBest())
                 best = findBest();
+            run_result[runs][iters] = best;
         }
-        // printAllChromos();
-        run_result[runs] = best;
     }
-    double run_avg = 0.0;
-    for (int runs = 0; runs < num_runs; runs++)
+
+    for (int iters = 0; iters < num_iters; iters++)
     {
-        cout << run_result[runs] << endl;
-        run_avg += run_result[runs];
+        for (int runs = 0; runs < num_runs; runs++)
+        {
+            run_avg[iters] += run_result[runs][iters];
+        }
+        run_avg[iters] /= num_runs;
     }
-    run_avg /= num_runs;
-    cout << "avg : " << run_avg << endl;
+    cout << "avg : " << run_avg[num_iters - 1] << endl;
+    wirteFile();
 }
 
 int GaTsp::find(i1d chromo, int target)
@@ -516,4 +515,33 @@ void GaTsp::select()
 
     for (int chromos = 0; chromos < num_chromos; chromos++)
         chromo_set[chromos] = select_chromos[chromos];
+}
+
+void GaTsp::wirteFile()
+{
+    FILE *fp;
+    string filename = "data\\output";
+    switch (crossover_choice)
+    {
+    case 0:
+        filename += "PMX";
+        break;
+    case 1:
+        filename += "OX";
+        break;
+    case 2:
+        filename += "CX";
+        break;
+    }
+    filename += ".txt";
+    fp = fopen(filename.c_str(), "w");
+    char *ctemp;
+    ctemp = (char *)calloc(10, sizeof(char));
+    for (int iters = 0; iters < num_iters; iters++)
+    {
+        // sprintf(ctemp, "%f", run_avg[iters]);
+        // cout << ctemp << endl;
+        fprintf(fp, "%f\n", run_avg[iters]);
+    }
+    fclose(fp);
 }
