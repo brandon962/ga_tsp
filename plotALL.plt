@@ -169,5 +169,5 @@ set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
 ## Last datafile plotted: "outputPMX.txt"
-plot "outputOX.txt" w l, "outputCX.txt" w l, "outputPMX.txt" w l
+plot "data/outputOX.txt" w l, "data/outputCX.txt" w l, "data/outputPMX.txt" w l
 #    EOF
