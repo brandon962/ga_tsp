@@ -1,11 +1,10 @@
-###### How to use?
+#### How to use?
 
 * start.bat
 * main.exe
-
 * main.exe [runs] [iterations] [pop size] [cities] [filename] [crossover rate] [mutation rate1] [mutation rate2] [crossover type] [player]
 
-###### How's the effect?
+#### How's the effect?
 
 Three type of crossover : PMX, OX, CX.
 
